@@ -142,11 +142,14 @@ public class EmployeePanel extends JPanel {
                 return;
             }
             employeeDAO.addEmployee(employee);
-            JOptionPane.showMessageDialog(this, "Employee added successfully.");
+            JOptionPane.showMessageDialog(this, "Employee added successfully.\n\nLogin account created:\n"
+                    + "Username: " + EmployeeDAO.getDefaultUsername(employee.getEmployeeId())
+                    + "\nPassword: " + EmployeeDAO.getDefaultPassword(employee.getEmployeeId()));
             clearFields();
             refresh();
         } catch (SQLIntegrityConstraintViolationException ex) {
-            showError("This email address is already used by another employee.");
+            showError("This email address (or the login username emp"
+                    + employee.getEmployeeId() + ") is already used.\nNothing was saved.");
         } catch (SQLException ex) {
             showDbError(ex);
         }
@@ -186,7 +189,7 @@ public class EmployeePanel extends JPanel {
                 return;
             }
             int choice = JOptionPane.showConfirmDialog(this,
-                    "Are you sure you want to delete employee " + employeeId + "?",
+                    "Are you sure you want to delete employee " + employeeId + "?\n(Their login account will also be removed.)",
                     "Confirm Delete", JOptionPane.YES_NO_OPTION);
             if (choice != JOptionPane.YES_OPTION) {
                 return;

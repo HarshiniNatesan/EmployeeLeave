@@ -9,6 +9,27 @@ Documents:
 * `database/employee_leave_management.sql` - full database script
 * `database/sample_queries.sql` - demonstration queries (JOIN, GROUP BY, HAVING, subquery, view, procedure)
 
+## Login and roles (added)
+
+The application now starts with a **login page**. Choose the role, then enter username and password.
+
+| Role | What the user sees |
+|---|---|
+| **Admin** | Employee Management, Leave Records, Search Leave, Update Leave Status |
+| **Employee** | Only **Apply Leave**, which has three tabs: Apply Leave, View Leave, Cancel Leave (own records only) |
+
+Sample accounts (created by the SQL script; change them before real use):
+
+| Role | Username | Password |
+|---|---|---|
+| Admin | `admin` | `admin123` |
+| Employee (ID 101) | `emp101` | `emp@101` |
+| Employee (ID 102 ... 106) | `emp102` ... `emp106` | `emp@102` ... `emp@106` |
+
+When the admin adds a new employee, a login is created automatically in the same transaction: username `emp<ID>`, password `emp@<ID>` (shown in the success message).
+
+**Important:** because the database script changed (new `users` table), re-run `database/employee_leave_management.sql` once before starting. Details, tests and viva questions: `docs/LOGIN_AND_ROLES.md`.
+
 ## 1. Setup (about 5 minutes)
 
 **Requirements:** JDK 11+, MySQL 8.0.16+ (the CHECK constraints need it), Maven 3.6+.

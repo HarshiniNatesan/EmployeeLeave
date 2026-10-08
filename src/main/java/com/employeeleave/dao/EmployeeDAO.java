@@ -17,17 +17,50 @@ public class EmployeeDAO {
             "SELECT e.employee_id, e.name, e.department_id, d.department_name, e.email, e.phone "
             + "FROM employees e INNER JOIN departments d ON e.department_id = d.department_id";
 
-    /** CREATE */
+    /** Default login given to every new employee: username emp<ID>, password emp@<ID>. */
+    public static String getDefaultUsername(int employeeId) {
+        return "emp" + employeeId;
+    }
+
+    public static String getDefaultPassword(int employeeId) {
+        return "emp@" + employeeId;
+    }
+
+    /**
+     * CREATE - ONE TRANSACTION: insert the employee AND the employee's login account.
+     * If either INSERT fails (for example the username already exists), both are rolled back,
+     * so we never get an employee without a login or a login without an employee.
+     */
     public void addEmployee(Employee employee) throws SQLException {
-        String sql = "INSERT INTO employees (employee_id, name, department_id, email, phone) VALUES (?, ?, ?, ?, ?)";
-        try (Connection con = DatabaseConnection.getConnection();
-             PreparedStatement ps = con.prepareStatement(sql)) {
-            ps.setInt(1, employee.getEmployeeId());
-            ps.setString(2, employee.getName());
-            ps.setInt(3, employee.getDepartmentId());
-            ps.setString(4, employee.getEmail());
-            ps.setString(5, employee.getPhone());
-            ps.executeUpdate();
+        String employeeSql = "INSERT INTO employees (employee_id, name, department_id, email, phone) "
+                + "VALUES (?, ?, ?, ?, ?)";
+        String userSql = "INSERT INTO users (username, password_hash, role, employee_id) VALUES (?, ?, 'Employee', ?)";
+        try (Connection con = DatabaseConnection.getConnection()) {
+            try {
+                con.setAutoCommit(false);                       // start transaction
+
+                try (PreparedStatement ps = con.prepareStatement(employeeSql)) {
+                    ps.setInt(1, employee.getEmployeeId());
+                    ps.setString(2, employee.getName());
+                    ps.setInt(3, employee.getDepartmentId());
+                    ps.setString(4, employee.getEmail());
+                    ps.setString(5, employee.getPhone());
+                    ps.executeUpdate();
+                }
+                try (PreparedStatement ps = con.prepareStatement(userSql)) {
+                    ps.setString(1, getDefaultUsername(employee.getEmployeeId()));
+                    ps.setString(2, UserDAO.hashPassword(getDefaultPassword(employee.getEmployeeId())));
+                    ps.setInt(3, employee.getEmployeeId());
+                    ps.executeUpdate();
+                }
+
+                con.commit();                                   // both rows saved
+            } catch (SQLException | RuntimeException ex) {
+                con.rollback();                                 // neither row saved
+                throw ex;
+            } finally {
+                con.setAutoCommit(true);
+            }
         }
     }
 

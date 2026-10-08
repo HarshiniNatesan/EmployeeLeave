@@ -10,8 +10,6 @@ import com.employeeleave.model.LeaveType;
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
 import java.awt.GridLayout;
-import java.awt.event.FocusAdapter;
-import java.awt.event.FocusEvent;
 import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
@@ -24,12 +22,18 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
 
-/** Apply Leave screen: submit a new leave request (status = Pending). */
+/**
+ * Apply Leave tab (Employee login). The employee is the logged-in user, so the
+ * Employee ID, name and department are filled in automatically and cannot be changed.
+ */
 public class ApplyLeavePanel extends JPanel {
 
     private final EmployeeDAO employeeDAO = new EmployeeDAO();
     private final LeaveDAO leaveDAO = new LeaveDAO();
     private final LeaveTypeDAO leaveTypeDAO = new LeaveTypeDAO();
+
+    private final int employeeId;                       // the logged-in employee
+    private Employee employee;                          // loaded from MySQL in refresh()
 
     private final JTextField employeeIdField = new JTextField(25);
     private final JTextField employeeNameField = new JTextField(25);
@@ -40,23 +44,18 @@ public class ApplyLeavePanel extends JPanel {
     private final JTextField toDateField = new JTextField(25);
     private final JTextField reasonField = new JTextField(25);
 
-    public ApplyLeavePanel() {
+    public ApplyLeavePanel(int employeeId) {
+        this.employeeId = employeeId;
+
         setLayout(new BorderLayout(10, 10));
         setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
 
+        employeeIdField.setText(String.valueOf(employeeId));
+        employeeIdField.setEditable(false);
         employeeNameField.setEditable(false);
         departmentField.setEditable(false);
 
         add(createFormPanel(), BorderLayout.NORTH);
-
-        // Show the employee's name and department when the user leaves the ID field or presses Enter
-        employeeIdField.addFocusListener(new FocusAdapter() {
-            @Override
-            public void focusLost(FocusEvent e) {
-                showEmployeeDetails();
-            }
-        });
-        employeeIdField.addActionListener(e -> showEmployeeDetails());
         leaveTypeCombo.addActionListener(e -> showMaxDays());
     }
 
@@ -98,17 +97,29 @@ public class ApplyLeavePanel extends JPanel {
         return top;
     }
 
-    /** Loads the leave types from MySQL into the drop-down. */
+    /** Loads the leave types and the employee's name/department from MySQL. */
     public void refresh() {
         try {
             leaveTypeCombo.removeAllItems();
             for (LeaveType type : leaveTypeDAO.getAllLeaveTypes()) {
                 leaveTypeCombo.addItem(type);
             }
-            leaveTypeCombo.setSelectedIndex(-1);   // nothing chosen until the user selects
+            leaveTypeCombo.setSelectedIndex(-1);
             showMaxDays();
+            loadEmployeeDetails();
         } catch (SQLException ex) {
             showError("Database error: " + ex.getMessage());
+        }
+    }
+
+    private void loadEmployeeDetails() throws SQLException {
+        employee = employeeDAO.getEmployeeById(employeeId);
+        if (employee == null) {
+            employeeNameField.setText("Employee not found");
+            departmentField.setText("");
+        } else {
+            employeeNameField.setText(employee.getName());
+            departmentField.setText(employee.getDepartmentName());
         }
     }
 
@@ -117,48 +128,15 @@ public class ApplyLeavePanel extends JPanel {
         maxDaysLabel.setText(type == null ? " " : String.valueOf(type.getMaxDays()));
     }
 
-    /** Looks up the employee and shows name and department. Returns the employee, or null. */
-    private Employee showEmployeeDetails() {
-        String text = employeeIdField.getText().trim();
-        employeeNameField.setText("");
-        departmentField.setText("");
-        if (text.isEmpty()) {
-            return null;
-        }
+    private void submitLeave() {
         try {
-            Employee employee = employeeDAO.getEmployeeById(Integer.parseInt(text));
-            if (employee == null) {
-                employeeNameField.setText("Employee not found");
-                return null;
-            }
-            employeeNameField.setText(employee.getName());
-            departmentField.setText(employee.getDepartmentName());
-            return employee;
-        } catch (NumberFormatException ex) {
-            employeeNameField.setText("Invalid Employee ID");
-            return null;
+            loadEmployeeDetails();
         } catch (SQLException ex) {
             showError("Database error: " + ex.getMessage());
-            return null;
-        }
-    }
-
-    private void submitLeave() {
-        // ---- validation ----
-        String idText = employeeIdField.getText().trim();
-        if (idText.isEmpty()) {
-            showError("Please enter a valid employee ID.");
             return;
         }
-        try {
-            Integer.parseInt(idText);
-        } catch (NumberFormatException ex) {
-            showError("Employee ID must be a number.");
-            return;
-        }
-        Employee employee = showEmployeeDetails();
         if (employee == null) {
-            showError("Employee not found. Please enter a valid employee ID.");
+            showError("Your employee record was not found. Please contact the administrator.");
             return;
         }
         LeaveType leaveType = (LeaveType) leaveTypeCombo.getSelectedItem();
@@ -205,7 +183,7 @@ public class ApplyLeavePanel extends JPanel {
             return;
         }
 
-        // ---- save through the DAO (the INSERT runs inside a transaction) ----
+        // Save through the DAO (the INSERT runs inside a transaction)
         LeaveRequest leave = new LeaveRequest(employee.getEmployeeId(), leaveType.getLeaveTypeId(),
                 from, to, reason);
         try {
@@ -220,10 +198,8 @@ public class ApplyLeavePanel extends JPanel {
         }
     }
 
+    /** Clears only the leave details; the logged-in employee's own details stay. */
     private void clearFields() {
-        employeeIdField.setText("");
-        employeeNameField.setText("");
-        departmentField.setText("");
         leaveTypeCombo.setSelectedIndex(-1);
         fromDateField.setText("");
         toDateField.setText("");

@@ -1,12 +1,12 @@
 package com.employeeleave;
 
-import com.employeeleave.gui.MainFrame;
+import com.employeeleave.gui.LoginFrame;
 
 import java.awt.Font;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 
-/** Entry point of the application. */
+/** Entry point of the application. The first screen is the login page. */
 public class Main {
 
     public static void main(String[] args) {
@@ -18,15 +18,15 @@ public class Main {
         setDefaultFonts();
 
         // Swing screens must be created on the Event Dispatch Thread
-        SwingUtilities.invokeLater(() -> new MainFrame().setVisible(true));
+        SwingUtilities.invokeLater(() -> new LoginFrame().setVisible(true));
     }
 
     /** One consistent font for the whole application. */
     private static void setDefaultFonts() {
         Font normal = new Font("SansSerif", Font.PLAIN, 14);
         Font bold = new Font("SansSerif", Font.BOLD, 14);
-        String[] keys = {"Label.font", "Button.font", "TextField.font", "TextArea.font",
-            "ComboBox.font", "Table.font", "OptionPane.messageFont", "OptionPane.buttonFont"};
+        String[] keys = {"Label.font", "Button.font", "TextField.font", "PasswordField.font", "TextArea.font",
+            "ComboBox.font", "Table.font", "TabbedPane.font", "OptionPane.messageFont", "OptionPane.buttonFont"};
         for (String key : keys) {
             UIManager.put(key, normal);
         }

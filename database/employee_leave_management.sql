@@ -12,6 +12,7 @@ USE employee_leave_management;
 DROP PROCEDURE IF EXISTS GetEmployeeLeaves;
 DROP VIEW      IF EXISTS employee_leave_details;
 DROP TABLE     IF EXISTS leave_requests;
+DROP TABLE     IF EXISTS users;
 DROP TABLE     IF EXISTS employees;
 DROP TABLE     IF EXISTS leave_types;
 DROP TABLE     IF EXISTS departments;
@@ -55,6 +56,31 @@ CREATE TABLE employees (
     CONSTRAINT fk_employees_department FOREIGN KEY (department_id)
         REFERENCES departments (department_id)
         ON DELETE RESTRICT ON UPDATE CASCADE
+);
+
+-- ---------------------------------------------------------------------
+-- 3b. users  (login accounts; child of employees)
+--     role 'Admin'    -> employee_id is NULL
+--     role 'Employee' -> employee_id points to the employee who owns the account
+--     password_hash   -> SHA-256 hex (64 chars); plain passwords are never stored.
+--     ON DELETE CASCADE here only removes the login account of a deleted employee;
+--     leave history is still protected (leave_requests uses RESTRICT).
+--     (MySQL does not allow CHECK constraints on a column that has a CASCADE
+--      foreign key, so the role/employee_id pairing is enforced by the application.)
+-- ---------------------------------------------------------------------
+CREATE TABLE users (
+    user_id       INT          NOT NULL AUTO_INCREMENT,
+    username      VARCHAR(50)  NOT NULL,
+    password_hash CHAR(64)     NOT NULL,
+    role          VARCHAR(10)  NOT NULL,
+    employee_id   INT          NULL,
+    CONSTRAINT pk_users PRIMARY KEY (user_id),
+    CONSTRAINT uq_users_username UNIQUE (username),
+    CONSTRAINT uq_users_employee UNIQUE (employee_id),
+    CONSTRAINT chk_user_role CHECK (role IN ('Admin', 'Employee')),
+    CONSTRAINT fk_users_employee FOREIGN KEY (employee_id)
+        REFERENCES employees (employee_id)
+        ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 -- ---------------------------------------------------------------------
@@ -116,6 +142,18 @@ INSERT INTO leave_requests (employee_id, leave_type_id, from_date, to_date, reas
     (104, 1, '2026-10-12', '2026-10-13', 'Sibling wedding',        'Cancelled'),
     (104, 3, '2026-12-21', '2026-12-24', 'Year-end trip',          'Pending'),
     (105, 2, '2026-10-01', '2026-10-02', 'Dental treatment',       'Approved');
+
+-- Login accounts (SAMPLE passwords, for demonstration only)
+--   admin  / admin123          (Admin)
+--   emp101 / emp@101  ...  emp106 / emp@106   (Employee, linked to employee 101..106)
+INSERT INTO users (username, password_hash, role, employee_id) VALUES
+    ('admin',  SHA2('admin123', 256), 'Admin',    NULL),
+    ('emp101', SHA2('emp@101',  256), 'Employee', 101),
+    ('emp102', SHA2('emp@102',  256), 'Employee', 102),
+    ('emp103', SHA2('emp@103',  256), 'Employee', 103),
+    ('emp104', SHA2('emp@104',  256), 'Employee', 104),
+    ('emp105', SHA2('emp@105',  256), 'Employee', 105),
+    ('emp106', SHA2('emp@106',  256), 'Employee', 106);
 
 -- ---------------------------------------------------------------------
 -- View: joins the 4 tables once, so queries do not repeat the JOINs

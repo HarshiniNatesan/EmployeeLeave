@@ -202,6 +202,22 @@ public class LeaveDAO {
         return updateLeaveStatus(leaveId, "Cancelled");
     }
 
+    /**
+     * Cancel by the EMPLOYEE. The SQL itself guarantees that the leave belongs to this employee
+     * and is still Pending or Approved, so an employee can never cancel someone else's leave.
+     * Returns true if a row was changed.
+     */
+    public boolean cancelOwnLeave(int leaveId, int employeeId) throws SQLException {
+        String sql = "UPDATE leave_requests SET status = 'Cancelled' "
+                + "WHERE leave_id = ? AND employee_id = ? AND status IN ('Pending', 'Approved')";
+        try (Connection con = DatabaseConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setInt(1, leaveId);
+            ps.setInt(2, employeeId);
+            return ps.executeUpdate() > 0;
+        }
+    }
+
     /** DELETE. Returns true if a row was deleted. */
     public boolean deleteLeaveRequest(int leaveId) throws SQLException {
         String sql = "DELETE FROM leave_requests WHERE leave_id = ?";
