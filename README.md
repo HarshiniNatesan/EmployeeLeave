@@ -1,4 +1,4 @@
-# Employee Leave Management System (DBMS Mini-Project)
+# Employee Leave Management System 
 
 Java Swing + JDBC + MySQL 8 desktop application. Database-first design with four normalized tables:
 `departments`, `employees`, `leave_types`, `leave_requests`.
